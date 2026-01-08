@@ -177,6 +177,6 @@ podman run -d --rm -p 443:8443  \
 # --- VERIFY STATUS ---
 echo "Waiting for Quay to start..."
 sleep 20
-podman ps -a --filter "name=$CONTAINER_NAME"
+podman ps -a --filter "name=$QUAY_CONTAINER_NAME"
 
 echo "Quay server should now be running with SSL enabled. You can access it at https://$(grep SERVER_HOSTNAME config.yaml | awk '{print $2}')"
