@@ -12,7 +12,7 @@ QUAY_POSGRES_USR="quayuser"
 QUAY_POSTGRES_PWD=""
 QUAY_REDIS_PWD=""
 
-CONTAINER_NAME="quay"
+QUAY_CONTAINER_NAME="quay"
 
 # --- CREATE CA FILES ---
 openssl genrsa -out rootCA.key 2048
