@@ -2,7 +2,7 @@
 
 # --- VARIABLES ---
 QUAY_VERSION="3.16.0"
-QUAY_IMAGE="registry.redhat.io/quay/quay-rhel8:v${QUAY_VERSION}"
+QUAY_IMAGE="registry.redhat.io/quay/quay-rhel9:v${QUAY_VERSION}"
 QUAY_CONFIG_DIR="$(pwd)/config"
 QUAY_STORAGE_DIR="$(pwd)/storage"
 QUAY_FQDN="quay.lab.local"
