@@ -83,9 +83,6 @@ if ! command -v sudo podman &> /dev/null; then
     sudo dnf module install -y container-tools
 fi
 
-# Create a network for the Quay components
-podman network create quay-net
-
 # --- SETUP POSTGRES DATABASE ---
 echo "Starting up Postgres..."
 sudo mkdir -p "$QUAY_POSTGRES_DIR"
