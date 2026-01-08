@@ -86,7 +86,7 @@ fi
 # --- SETUP POSTGRES DATABASE ---
 echo "Starting up Postgres..."
 sudo mkdir -p "$QUAY_POSTGRES_DIR"
-sudo chmod -R 777 "$QUAY_POSTGRES_DIR"
+sudo setfacl -m u:26:-wx $QUAY_POSTGRES_DIR
 
 sudo podman run -d --rm --name postgresql-quay \
   -e POSTGRESQL_USER=$QUAY_POSGRES_USR \
@@ -114,7 +114,7 @@ sudo podman run -d --rm --name quay-redis \
 echo "Setting up Quay directories..."
 sudo mkdir -p "$QUAY_CONFIG_DIR"
 sudo mkdir -p "$QUAY_STORAGE_DIR"
-sudo chmod -R 777 $QUAY_STORAGE_DIR
+sudo setfacl -m u:1001:-wx $QUAY_STORAGE_DIR
 
 sudo cat << EOF > config.yaml
 BUILDLOGS_REDIS:
