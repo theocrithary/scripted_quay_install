@@ -80,15 +80,15 @@ openssl x509 -req -in ssl.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -
 # --- CHECK FOR PREREQUISITES ---
 if ! command -v sudo podman &> /dev/null; then
     echo "Podman is not installed. Installing now."
-    sudo dnf module install -y container-tools
+    dnf module install -y container-tools
 fi
 
 # --- SETUP POSTGRES DATABASE ---
 echo "Starting up Postgres..."
-sudo mkdir -p "$QUAY_POSTGRES_DIR"
-sudo setfacl -m u:26:-wx $QUAY_POSTGRES_DIR
+mkdir -p "$QUAY_POSTGRES_DIR"
+setfacl -m u:26:-wx $QUAY_POSTGRES_DIR
 
-sudo podman run -d --rm --name postgresql-quay \
+podman run -d --rm --name postgresql-quay \
   -e POSTGRESQL_USER=$QUAY_POSGRES_USR \
   -e POSTGRESQL_PASSWORD=$QUAY_POSTGRES_PWD \
   -e POSTGRESQL_DATABASE=quay \
@@ -100,23 +100,23 @@ sudo podman run -d --rm --name postgresql-quay \
 #--- FIX POSTGRES MISSING EXTENSION ---
 echo "Waiting for Postgresql to start..."
 sleep 10
-sudo podman exec -it postgresql-quay /bin/bash -c 'echo "CREATE EXTENSION IF NOT EXISTS pg_trgm" | psql -d quay -U postgres'
+podman exec -it postgresql-quay /bin/bash -c 'echo "CREATE EXTENSION IF NOT EXISTS pg_trgm" | psql -d quay -U postgres'
 
 
 # --- SETUP REDIS ---
 echo "Starting up Redis..."
-sudo podman run -d --rm --name quay-redis \
+podman run -d --rm --name quay-redis \
   -p 6379:6379 \
   -e REDIS_PASSWORD=$QUAY_REDIS_PWD \
   registry.redhat.io/rhel9/redis-6:latest
 
 # --- SETUP DIRECTORIES AND COPY FILES ---
 echo "Setting up Quay directories..."
-sudo mkdir -p "$QUAY_CONFIG_DIR"
-sudo mkdir -p "$QUAY_STORAGE_DIR"
-sudo setfacl -m u:1001:-wx $QUAY_STORAGE_DIR
+mkdir -p "$QUAY_CONFIG_DIR"
+mkdir -p "$QUAY_STORAGE_DIR"
+setfacl -m u:1001:-wx $QUAY_STORAGE_DIR
 
-sudo cat << EOF > config.yaml
+cat << EOF > config.yaml
 BUILDLOGS_REDIS:
     host: $QUAY_FQDN
     password: $QUAY_REDIS_PWD
@@ -146,14 +146,14 @@ EOF
 
 # --- PREPARE CONFIG FILES ---
 echo "Copying configuration and SSL files..."
-sudo cat rootCA.pem >> ssl.cert
-sudo chown root:root config.yaml
-sudo chown root:root ssl.cert
-sudo chown root:root ssl.key
-sudo chmod 644 ssl.key
-sudo cp config.yaml "$QUAY_CONFIG_DIR"/
-sudo cp ssl.cert "$QUAY_CONFIG_DIR"/
-sudo cp ssl.key "$QUAY_CONFIG_DIR"/
+cat rootCA.pem >> ssl.cert
+chown root:root config.yaml
+chown root:root ssl.cert
+chown root:root ssl.key
+chmod 644 ssl.key
+cp config.yaml "$QUAY_CONFIG_DIR"/
+cp ssl.cert "$QUAY_CONFIG_DIR"/
+cp ssl.key "$QUAY_CONFIG_DIR"/
 
 # --- CHECK FOR CONFIG AND CERT FILES ---
 if [ ! -f "$QUAY_CONFIG_DIR/ssl.cert" ] || [ ! -f "$QUAY_CONFIG_DIR/ssl.key" ] || [ ! -f "$QUAY_CONFIG_DIR/config.yaml" ]; then
@@ -165,10 +165,10 @@ fi
 echo "Starting Red Hat Quay container..."
 
 # Pull the Quay image
-sudo podman pull "$QUAY_IMAGE"
+podman pull "$QUAY_IMAGE"
 
 # Run the new container with SSL/TLS ports
-sudo podman run -d --rm -p 443:8443  \
+podman run -d --rm -p 443:8443  \
   --name="$QUAY_CONTAINER_NAME" \
   -v "$QUAY_CONFIG_DIR":/conf/stack:Z \
   -v "$QUAY_STORAGE_DIR":/datastorage:Z \
@@ -177,6 +177,6 @@ sudo podman run -d --rm -p 443:8443  \
 # --- VERIFY STATUS ---
 echo "Waiting for Quay to start..."
 sleep 20
-sudo podman ps -a --filter "name=$CONTAINER_NAME"
+podman ps -a --filter "name=$CONTAINER_NAME"
 
 echo "Quay server should now be running with SSL enabled. You can access it at https://$(grep SERVER_HOSTNAME config.yaml | awk '{print $2}')"
