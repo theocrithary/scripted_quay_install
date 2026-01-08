@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # --- VARIABLES ---
-QUAY_VERSION="3.15.1"
+QUAY_VERSION="3.16.0"
 QUAY_IMAGE="registry.redhat.io/quay/quay-rhel8:v${QUAY_VERSION}"
 QUAY_CONFIG_DIR="$(pwd)/config"
 QUAY_STORAGE_DIR="$(pwd)/storage"
@@ -90,24 +90,28 @@ podman network create quay-net
 echo "Starting up Postgres..."
 sudo mkdir -p "$QUAY_POSTGRES_DIR"
 sudo chmod -R 777 "$QUAY_POSTGRES_DIR"
-sudo podman run -d --rm --name quay-db \
-  --network quay-net \
-  -e POSTGRES_USER=$QUAY_POSGRES_USR \
-  -e POSTGRES_PASSWORD=$QUAY_POSTGRES_PWD \
-  -e POSTGRES_DB=quay \
-  -v $QUAY_POSTGRES_DIR:/var/lib/postgresql/data:Z \
+
+sudo podman run -d --rm --name postgresql-quay \
+  -e POSTGRESQL_USER=$QUAY_POSGRES_USR \
+  -e POSTGRESQL_PASSWORD=$QUAY_POSTGRES_PWD \
+  -e POSTGRESQL_DATABASE=quay \
+  -e POSTGRESQL_ADMIN_PASSWORD=$QUAY_POSTGRES_PWD \
+  -p 5432:5432 \
+  -v $QUAY_POSTGRES_DIR:/var/lib/pgsql/data:Z \
   registry.redhat.io/rhel9/postgresql-15
 
 #--- FIX POSTGRES MISSING EXTENSION ---
 echo "Waiting for Postgresql to start..."
 sleep 10
-sudo podman exec postgresql psql -U "quayuser" -d "quay" -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+sudo podman exec -it postgresql-quay /bin/bash -c 'echo "CREATE EXTENSION IF NOT EXISTS pg_trgm" | psql -d quay -U postgres'
+
 
 # --- SETUP REDIS ---
 echo "Starting up Redis..."
-podman run -d --name quay-redis \
-  --network quay-net \
-  registry.redhat.io/rhel9/redis-7
+sudo podman run -d --rm --name quay-redis \
+  -p 6379:6379 \
+  -e REDIS_PASSWORD=$QUAY_REDIS_PWD \
+  registry.redhat.io/rhel9/redis-6:latest
 
 # --- SETUP DIRECTORIES AND COPY FILES ---
 echo "Setting up Quay directories..."
@@ -167,9 +171,8 @@ echo "Starting Red Hat Quay container..."
 sudo podman pull "$QUAY_IMAGE"
 
 # Run the new container with SSL/TLS ports
-sudo podman run -d --restart=always \
-  --name "$CONTAINER_NAME" \
-  -p 443:8443 \
+sudo podman run -d --rm -p 443:8443  \
+  --name="$QUAY_CONTAINER_NAME" \
   -v "$QUAY_CONFIG_DIR":/conf/stack:Z \
   -v "$QUAY_STORAGE_DIR":/datastorage:Z \
   "$QUAY_IMAGE"
