@@ -8,8 +8,8 @@ QUAY_STORAGE_DIR="$(pwd)/storage"
 QUAY_FQDN="quay.lab.local"
 QUAY_IP="192.168.0.30"
 QUAY_POSTGRES_DIR="$(pwd)/postgres-quay"
-QUAY_POSTGRES_USRPWD=""
-QUAY_POSTGRES_ADMINPWD=""
+QUAY_POSGRES_USR="quayuser"
+QUAY_POSTGRES_PWD=""
 QUAY_REDIS_PWD=""
 
 CONTAINER_NAME="quay"
@@ -79,23 +79,24 @@ openssl x509 -req -in ssl.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -
 
 # --- CHECK FOR PREREQUISITES ---
 if ! command -v sudo podman &> /dev/null; then
-    echo "Podman is not installed. Please install it first."
-    exit 1
+    echo "Podman is not installed. Installing now."
+    sudo dnf module install -y container-tools
 fi
+
+# Create a network for the Quay components
+podman network create quay-net
 
 # --- SETUP POSTGRES DATABASE ---
 echo "Starting up Postgres..."
 sudo mkdir -p "$QUAY_POSTGRES_DIR"
-sudo setfacl -m u:26:-wx $QUAY_POSTGRES_DIR
-sudo podman run -d --rm --name postgresql \
-  -e POSTGRESQL_USER=quayuser \
-  -e POSTGRESQL_PASSWORD="$QUAY_POSTGRES_USRPWD" \
-  -e PGPASSWORD="$QUAY_POSTGRES_USRPWD" \
-  -e POSTGRESQL_DATABASE=quay \
-  -e POSTGRESQL_ADMIN_PASSWORD="$QUAY_POSTGRES_ADMINPWD" \
-  -p 5432:5432 \
-  -v $QUAY_POSTGRES_DIR:/var/lib/pgsql/data:Z \
-  registry.redhat.io/rhel8/postgresql-13
+sudo chmod -R 777 "$QUAY_POSTGRES_DIR"
+sudo podman run -d --rm --name quay-db \
+  --network quay-net \
+  -e POSTGRES_USER=$QUAY_POSGRES_USR \
+  -e POSTGRES_PASSWORD=$QUAY_POSTGRES_PWD \
+  -e POSTGRES_DB=quay \
+  -v $QUAY_POSTGRES_DIR:/var/lib/postgresql/data:Z \
+  registry.redhat.io/rhel9/postgresql-15
 
 #--- FIX POSTGRES MISSING EXTENSION ---
 echo "Waiting for Postgresql to start..."
@@ -104,16 +105,15 @@ sudo podman exec postgresql psql -U "quayuser" -d "quay" -c "CREATE EXTENSION IF
 
 # --- SETUP REDIS ---
 echo "Starting up Redis..."
-sudo podman run -d --rm --name redis \
-  -p 6379:6379 \
-  -e REDIS_PASSWORD="$QUAY_REDIS_PWD" \
-  registry.redhat.io/rhel8/redis-6:1-110
+podman run -d --name quay-redis \
+  --network quay-net \
+  registry.redhat.io/rhel9/redis-7
 
 # --- SETUP DIRECTORIES AND COPY FILES ---
 echo "Setting up Quay directories..."
 sudo mkdir -p "$QUAY_CONFIG_DIR"
 sudo mkdir -p "$QUAY_STORAGE_DIR"
-sudo setfacl -m u:1001:-wx $QUAY_STORAGE_DIR
+sudo chmod -R 777 $QUAY_STORAGE_DIR
 
 sudo cat << EOF > config.yaml
 BUILDLOGS_REDIS:
@@ -122,7 +122,7 @@ BUILDLOGS_REDIS:
     port: 6379
 CREATE_NAMESPACE_ON_PUSH: true
 DATABASE_SECRET_KEY: a8c2744b-7004-4af2-bcee-e417e7bdd235
-DB_URI: postgresql://quayuser:$QUAY_POSTGRES_USRPWD@$QUAY_FQDN:5432/quay
+DB_URI: postgresql://$QUAY_POSGRES_USR:$QUAY_POSTGRES_PWD@$QUAY_FQDN:5432/quay
 DISTRIBUTED_STORAGE_CONFIG:
     default:
         - LocalStorage
