@@ -77,7 +77,7 @@ log_section_start() {
   echo ""
   echo " # ================================================================================================== "
   echo " # ---> [${now_human}] Starting: ${section_title} (since previous: ${elapsed_since_prev})\n"
-  echo " # =============================================== "
+  echo " # ================================================================================================== "
    # update SECTION_START_TS to now for the next section
   SECTION_START_TS=$(date +%s)
 }
@@ -256,11 +256,11 @@ else
 fi
 
 #--- FIX POSTGRES MISSING EXTENSION ---
-if podman exec -it postgresql-quay /bin/bash -c 'psql -d quay -U postgres -c "\dx"' | grep -q "pg_trgm"; then
+if podman exec -it quay-postgresql /bin/bash -c 'psql -d quay -U postgres -c "\dx"' | grep -q "pg_trgm"; then
     echo "✅ pg_trgm extension already exists in the database."
 else
     echo "❌ pg_trgm extension not found. Creating now..."
-    podman exec -it postgresql-quay /bin/bash -c 'echo "CREATE EXTENSION IF NOT EXISTS pg_trgm" | psql -d quay -U postgres'
+    podman exec -it quay-postgresql /bin/bash -c 'echo "CREATE EXTENSION IF NOT EXISTS pg_trgm" | psql -d quay -U postgres'
     echo "✅ Successfully created pg_trgm extension."
 fi
 
