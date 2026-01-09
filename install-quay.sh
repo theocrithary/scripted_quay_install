@@ -75,9 +75,9 @@ log_section_start() {
   local now_human=$(timestamp)
   local elapsed_since_prev=$(elapsed_since "$SECTION_START_TS")
   echo ""
-  echo " # ================================================================================================== "
-  echo " # ---> [${now_human}] Starting: ${section_title} (since previous: ${elapsed_since_prev})\n"
-  echo " # ================================================================================================== "
+  echo " # ========================================================================================================= "
+  echo " # ---> [${now_human}] Starting: ${section_title} (since previous: ${elapsed_since_prev})"
+  echo " # ========================================================================================================= "
    # update SECTION_START_TS to now for the next section
   SECTION_START_TS=$(date +%s)
 }
@@ -320,7 +320,7 @@ if [ -f "$QUAY_CONFIG_DIR/config.yaml" ]; then
     echo "✅ Quay configuration file already exists."
 else
     echo "❌ Quay configuration file not found. Preparing now..."
-    cat << EOF > "$QUAY_CONFIG_DIR/config.yaml"
+    cat << EOF > "config.yaml"
 BUILDLOGS_REDIS:
     host: $QUAY_FQDN
     password: $REDIS_PWD
